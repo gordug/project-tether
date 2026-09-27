@@ -21,9 +21,14 @@ a declarative GUI toolkit for desktop, embedded, mobile, and web.
    diagnostics; in a terminal, `slint-viewer --check ui/main.slint` compiles
    one file and prints diagnostics, and `slint-viewer --screenshot` renders it
    (both `(1.17+)`; [debugging-and-mcp.md](reference/debugging-and-mcp.md)).
-3. Never declare UI work done without looking at a render — a screenshot for
-   appearance, the MCP server for interactions. Review against
-   [polish.md](reference/polish.md).
+3. **MANDATORY UI VERIFICATION GATE**: Never declare any UI work done without verifying
+   it in the live running application via Slint's built-in MCP server:
+   - Run the application with `SLINT_EMIT_DEBUG_INFO=1 SLINT_MCP_PORT=<port> cargo run --features slint/mcp`.
+   - Connect via JSON-RPC to `http://127.0.0.1:<port>/mcp`.
+   - Query the accessibility tree (`get_element_tree`, `query_element_descendants`).
+   - Simulate user actions (`click_element`, `invoke_accessibility_action`, `set_element_value`).
+   - Take screenshots (`take_screenshot`) and verify visual styling and contrast in **both Dark Mode and Light Mode**.
+   - See [slint-mcp skill](../slint-mcp/SKILL.md) and [debugging-and-mcp.md](reference/debugging-and-mcp.md).
 4. Share the render when the host supports it: inline the screenshot in chat
    apps, or print its absolute path and summarize the visual checks in CLI-only
    environments.

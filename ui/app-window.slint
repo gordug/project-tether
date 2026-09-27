@@ -1,11 +1,12 @@
 import { Theme } from "theme.slint";
-import { HostItem, TabItem, ServerMetrics } from "models.slint";
+import { HostItem, TabItem, ServerMetrics, FileItem, TransferItem, VaultEntry } from "models.slint";
 import { Sidebar } from "components/sidebar.slint";
 import { HeaderBar } from "components/header.slint";
 import { Workspace } from "components/workspace.slint";
 import { NewHostDialog } from "components/new_host_dialog.slint";
+import { VaultDialog } from "components/vault_dialog.slint";
 
-export { Theme, HostItem, TabItem, ServerMetrics }
+export { Theme, HostItem, TabItem, ServerMetrics, FileItem, TransferItem, VaultEntry }
 
 export global AppState {
     in property <[HostItem]> hosts;
@@ -22,6 +23,21 @@ export global AppState {
     // Terminal State
     in property <[string]> terminal_lines;
     in property <string> terminal_prompt: "admin@tether:~$ ";
+
+    // File Manager State
+    in property <string> local_path: "/";
+    in property <[FileItem]> local_files;
+    in property <int> selected_local_index: -1;
+    in property <string> remote_path: "/";
+    in property <[FileItem]> remote_files;
+    in property <int> selected_remote_index: -1;
+    in property <[TransferItem]> transfers;
+
+    // Vault State
+    in-out property <bool> show_vault_dialog: false;
+    in property <bool> vault_unlocked: false;
+    in property <string> vault_error_msg: "";
+    in property <[VaultEntry]> vault_entries;
 }
 
 export global AppLogic {
@@ -38,12 +54,33 @@ export global AppLogic {
     callback save_new_host(string, string, string, string, string, string, string);
     callback refresh_session();
     callback disconnect_session();
-    callback open_vault();
+    callback dark_mode_toggled(bool);
 
     // Terminal callbacks
     callback terminal_input_submitted(string);
     callback terminal_quick_cmd(string);
     callback terminal_clear_requested();
+
+    // File Manager callbacks
+    callback local_folder_enter(int);
+    callback local_folder_up();
+    callback local_refresh();
+    callback local_file_clicked(int);
+    callback remote_folder_enter(int);
+    callback remote_folder_up();
+    callback remote_refresh();
+    callback remote_file_clicked(int);
+    callback remote_new_folder();
+    callback upload_selected();
+    callback download_selected();
+    callback clear_transfers();
+
+    // Vault callbacks
+    callback open_vault();
+    callback close_vault();
+    callback unlock_vault(string);
+    callback lock_vault();
+    callback save_vault_secret(string, string);
 }
 
 export component AppWindow inherits Window {
@@ -83,6 +120,7 @@ export component AppWindow inherits Window {
                 tab_selected(idx) => { AppLogic.tab_selected(idx); }
                 tab_closed(idx) => { AppLogic.tab_closed(idx); }
                 quick_connect_submit(query) => { AppLogic.quick_connect_submit(query); }
+                dark_mode_toggled(is_dark) => { AppLogic.dark_mode_toggled(is_dark); }
             }
 
             Workspace {
@@ -90,15 +128,42 @@ export component AppWindow inherits Window {
                 has_active_tab: AppState.has_active_tab;
                 active_tab: AppState.active_tab;
                 metrics: AppState.metrics;
+
+                // Terminal
                 terminal_lines: AppState.terminal_lines;
                 terminal_prompt: AppState.terminal_prompt;
-
-                disconnect_session => { AppLogic.disconnect_session(); }
-                reconnect_session => { AppLogic.refresh_session(); }
-                quick_connect_protocol(proto) => { AppLogic.quick_connect_protocol(proto); }
                 terminal_input_submitted(cmd) => { AppLogic.terminal_input_submitted(cmd); }
                 terminal_quick_cmd(cmd) => { AppLogic.terminal_quick_cmd(cmd); }
                 terminal_clear_requested => { AppLogic.terminal_clear_requested(); }
+
+                // File Manager
+                local_path: AppState.local_path;
+                local_files: AppState.local_files;
+                selected_local_index: AppState.selected_local_index;
+                remote_path: AppState.remote_path;
+                remote_files: AppState.remote_files;
+                selected_remote_index: AppState.selected_remote_index;
+                transfers: AppState.transfers;
+
+                local_folder_enter(idx) => { AppLogic.local_folder_enter(idx); }
+                local_folder_up => { AppLogic.local_folder_up(); }
+                local_refresh => { AppLogic.local_refresh(); }
+                local_file_clicked(idx) => { AppLogic.local_file_clicked(idx); }
+
+                remote_folder_enter(idx) => { AppLogic.remote_folder_enter(idx); }
+                remote_folder_up => { AppLogic.remote_folder_up(); }
+                remote_refresh => { AppLogic.remote_refresh(); }
+                remote_file_clicked(idx) => { AppLogic.remote_file_clicked(idx); }
+                remote_new_folder => { AppLogic.remote_new_folder(); }
+
+                upload_selected => { AppLogic.upload_selected(); }
+                download_selected => { AppLogic.download_selected(); }
+                clear_transfers => { AppLogic.clear_transfers(); }
+
+                // Top Session controls
+                disconnect_session => { AppLogic.disconnect_session(); }
+                reconnect_session => { AppLogic.refresh_session(); }
+                quick_connect_protocol(proto) => { AppLogic.quick_connect_protocol(proto); }
             }
         }
     }
@@ -118,6 +183,25 @@ export component AppWindow inherits Window {
                 self.form_group,
                 self.form_tags
             );
+        }
+    }
+
+    if AppState.show_vault_dialog : VaultDialog {
+        is_unlocked: AppState.vault_unlocked;
+        unlock_error_msg: AppState.vault_error_msg;
+        vault_entries: AppState.vault_entries;
+
+        unlock_clicked(password) => {
+            AppLogic.unlock_vault(password);
+        }
+        lock_clicked => {
+            AppLogic.lock_vault();
+        }
+        close_clicked => {
+            AppLogic.close_vault();
+        }
+        save_secret_clicked(host_id, secret) => {
+            AppLogic.save_vault_secret(host_id, secret);
         }
     }
 }

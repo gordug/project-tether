@@ -9,7 +9,7 @@ export component HostCard inherits Rectangle {
     callback connect_clicked();
 
     height: 72px;
-    background: is_selected ? Theme.bg_card_hover : (touch.has_hover ? Theme.bg_card : #161b22);
+    background: is_selected ? Theme.bg_card_hover : (touch.has_hover ? Theme.bg_card : Theme.bg_dark);
     border-radius: Theme.radius_md;
     border-width: 1px;
     border-color: is_selected ? Theme.accent_blue : Theme.border;
@@ -144,6 +144,7 @@ export component Sidebar inherits Rectangle {
                     background: Theme.accent_blue;
                     Text {
                         text: "⚡";
+                        color: #ffffff;
                         font-size: 14px;
                         horizontal-alignment: center;
                         vertical-alignment: center;
@@ -224,6 +225,9 @@ export component Sidebar inherits Rectangle {
                 horizontal-stretch: 1;
                 border-radius: Theme.radius_sm;
                 background: root.category_filter == 0 ? Theme.accent_blue : Theme.bg_card;
+                border-width: 1px;
+                border-color: root.category_filter == 0 ? Theme.accent_blue : Theme.border;
+
                 TouchArea { clicked => { root.filter_changed(0); } }
                 Text {
                     text: "All";
@@ -239,6 +243,9 @@ export component Sidebar inherits Rectangle {
                 horizontal-stretch: 1;
                 border-radius: Theme.radius_sm;
                 background: root.category_filter == 1 ? Theme.accent_blue : Theme.bg_card;
+                border-width: 1px;
+                border-color: root.category_filter == 1 ? Theme.accent_blue : Theme.border;
+
                 TouchArea { clicked => { root.filter_changed(1); } }
                 Text {
                     text: "Term";
@@ -254,6 +261,9 @@ export component Sidebar inherits Rectangle {
                 horizontal-stretch: 1;
                 border-radius: Theme.radius_sm;
                 background: root.category_filter == 2 ? Theme.accent_blue : Theme.bg_card;
+                border-width: 1px;
+                border-color: root.category_filter == 2 ? Theme.accent_blue : Theme.border;
+
                 TouchArea { clicked => { root.filter_changed(2); } }
                 Text {
                     text: "Files";
@@ -269,6 +279,9 @@ export component Sidebar inherits Rectangle {
                 horizontal-stretch: 1;
                 border-radius: Theme.radius_sm;
                 background: root.category_filter == 3 ? Theme.accent_blue : Theme.bg_card;
+                border-width: 1px;
+                border-color: root.category_filter == 3 ? Theme.accent_blue : Theme.border;
+
                 TouchArea { clicked => { root.filter_changed(3); } }
                 Text {
                     text: "Remote";

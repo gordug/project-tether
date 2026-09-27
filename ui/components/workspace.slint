@@ -1,7 +1,7 @@
 import { Theme } from "../theme.slint";
-import { TabItem, ServerMetrics } from "../models.slint";
+import { TabItem, ServerMetrics, FileItem, TransferItem } from "../models.slint";
 import { TerminalView } from "terminal_view.slint";
-import { Button } from "std-widgets.slint";
+import { FileManagerView } from "file_manager.slint";
 
 export component MetricTile inherits Rectangle {
     in property <string> label;
@@ -42,7 +42,7 @@ export component MetricTile inherits Rectangle {
         Rectangle {
             height: 6px;
             border-radius: 3px;
-            background: Theme.bg_darkest;
+            background: Theme.progress_track;
 
             // Bar fill
             Rectangle {
@@ -122,15 +122,42 @@ export component Workspace inherits Rectangle {
     in property <bool> has_active_tab: false;
     in property <TabItem> active_tab;
     in property <ServerMetrics> metrics;
+
+    // Terminal Properties
     in property <[string]> terminal_lines;
     in property <string> terminal_prompt: "admin@tether:~$ ";
+
+    // File Manager Properties
+    in property <string> local_path: "/";
+    in property <[FileItem]> local_files;
+    in property <int> selected_local_index: -1;
+    in property <string> remote_path: "/";
+    in property <[FileItem]> remote_files;
+    in property <int> selected_remote_index: -1;
+    in property <[TransferItem]> transfers;
 
     callback disconnect_session();
     callback reconnect_session();
     callback quick_connect_protocol(string);
+
+    // Terminal Callbacks
     callback terminal_input_submitted(string);
     callback terminal_quick_cmd(string);
     callback terminal_clear_requested();
+
+    // File Manager Callbacks
+    callback local_folder_enter(int);
+    callback local_folder_up();
+    callback local_refresh();
+    callback local_file_clicked(int);
+    callback remote_folder_enter(int);
+    callback remote_folder_up();
+    callback remote_refresh();
+    callback remote_file_clicked(int);
+    callback remote_new_folder();
+    callback upload_selected();
+    callback download_selected();
+    callback clear_transfers();
 
     background: Theme.bg_darkest;
 
@@ -139,11 +166,13 @@ export component Workspace inherits Rectangle {
         spacing: 24px;
         alignment: center;
 
-        // Hero Welcome Banner
+        // Hero Welcome Banner with light/dark adaptive gradient
         Rectangle {
             height: 140px;
             border-radius: Theme.radius_lg;
-            background: @linear-gradient(135deg, #161b22 0%, #1f293d 100%);
+            background: Theme.dark
+                ? @linear-gradient(135deg, #161b22 0%, #1f293d 100%)
+                : @linear-gradient(135deg, #e8f0fe 0%, #d8e6f8 100%);
             border-width: 1px;
             border-color: Theme.border;
 
@@ -156,13 +185,14 @@ export component Workspace inherits Rectangle {
                     width: 68px;
                     height: 68px;
                     border-radius: Theme.radius_md;
-                    background: Theme.accent_blue.with-alpha(0.2);
+                    background: Theme.accent_blue.with-alpha(0.18);
                     border-width: 2px;
                     border-color: Theme.accent_blue;
 
                     Text {
                         text: "⚡";
                         font-size: 32px;
+                        color: Theme.accent_blue;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
@@ -379,7 +409,7 @@ export component Workspace inherits Rectangle {
         // Live Telemetry Bar (Server Monitoring Strip!)
         Rectangle {
             height: 68px;
-            background: #141820;
+            background: Theme.bg_dark;
             border-width: 1px;
             border-color: Theme.border;
 
@@ -424,23 +454,134 @@ export component Workspace inherits Rectangle {
             }
         }
 
-        // Main Session Viewport: Interactive TerminalView
+        // Viewport Switcher: File Manager, Terminal, or Remote Desktop Viewport
         VerticalLayout {
             vertical-stretch: 1;
-            padding: 8px;
 
-            TerminalView {
-                lines: root.terminal_lines;
-                prompt_str: root.terminal_prompt;
+            // 1. File Transfer Manager (SFTP / SCP / FTP)
+            if root.active_tab.protocol == "SFTP" || root.active_tab.protocol == "SCP" || root.active_tab.protocol == "FTP" : FileManagerView {
+                local_path: root.local_path;
+                local_files: root.local_files;
+                selected_local_index: root.selected_local_index;
 
-                submit_input(cmd) => {
-                    root.terminal_input_submitted(cmd);
+                remote_path: root.remote_path;
+                remote_files: root.remote_files;
+                selected_remote_index: root.selected_remote_index;
+
+                transfers: root.transfers;
+
+                local_folder_enter(idx) => { root.local_folder_enter(idx); }
+                local_folder_up => { root.local_folder_up(); }
+                local_refresh => { root.local_refresh(); }
+                local_file_clicked(idx) => { root.local_file_clicked(idx); }
+
+                remote_folder_enter(idx) => { root.remote_folder_enter(idx); }
+                remote_folder_up => { root.remote_folder_up(); }
+                remote_refresh => { root.remote_refresh(); }
+                remote_file_clicked(idx) => { root.remote_file_clicked(idx); }
+                remote_new_folder => { root.remote_new_folder(); }
+
+                upload_selected => { root.upload_selected(); }
+                download_selected => { root.download_selected(); }
+                clear_transfers => { root.clear_transfers(); }
+            }
+
+            // 2. Terminal Console (SSH / Telnet)
+            if root.active_tab.protocol == "SSH" || root.active_tab.protocol == "Telnet" : VerticalLayout {
+                padding: 8px;
+                TerminalView {
+                    lines: root.terminal_lines;
+                    prompt_str: root.terminal_prompt;
+
+                    submit_input(cmd) => {
+                        root.terminal_input_submitted(cmd);
+                    }
+                    run_quick_cmd(cmd) => {
+                        root.terminal_quick_cmd(cmd);
+                    }
+                    clear_screen => {
+                        root.terminal_clear_requested();
+                    }
                 }
-                run_quick_cmd(cmd) => {
-                    root.terminal_quick_cmd(cmd);
-                }
-                clear_screen => {
-                    root.terminal_clear_requested();
+            }
+
+            // 3. Remote Desktop Viewport (VNC / RDP)
+            if root.active_tab.protocol == "VNC" || root.active_tab.protocol == "RDP" : VerticalLayout {
+                padding: 16px;
+                alignment: center;
+
+                Rectangle {
+                    width: 720px;
+                    height: 440px;
+                    background: Theme.bg_dark;
+                    border-radius: Theme.radius_lg;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    VerticalLayout {
+                        padding: 24px;
+                        spacing: 16px;
+                        alignment: center;
+
+                        Rectangle {
+                            width: 64px;
+                            height: 64px;
+                            border-radius: 32px;
+                            background: root.active_tab.badge_color.with-alpha(0.2);
+                            border-width: 1px;
+                            border-color: root.active_tab.badge_color;
+
+                            Text {
+                                text: root.active_tab.protocol == "VNC" ? "🖥" : "🪟";
+                                font-size: 28px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Text {
+                            text: root.active_tab.protocol + " Remote Desktop Stream";
+                            color: Theme.text_primary;
+                            font-size: 18px;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: "Display Framebuffer: 1920×1080 @ 60 FPS (Hardware Accelerated)";
+                            color: Theme.text_secondary;
+                            font-size: 12px;
+                            horizontal-alignment: center;
+                        }
+
+                        Rectangle {
+                            height: 120px;
+                            background: Theme.bg_darkest;
+                            border-radius: Theme.radius_md;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 8px;
+
+                                Text {
+                                    text: "RFB 3.8 / IronRDP Pixel Pipeline Initialized";
+                                    color: #10b981;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    horizontal-alignment: center;
+                                }
+
+                                Text {
+                                    text: "Keyboard & Pointer Event Dispatch Active";
+                                    color: Theme.text_muted;
+                                    font-size: 11px;
+                                    horizontal-alignment: center;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

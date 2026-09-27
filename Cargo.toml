@@ -1,5 +1,5 @@
 [package]
-name = "tether"
+name = "project-tether"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,6 +8,10 @@ members = [
     "crates/tether-core",
     "crates/tether-net",
 ]
+
+[features]
+default = []
+mcp = ["slint/mcp"]
 
 [dependencies]
 tether-core = { path = "crates/tether-core" }

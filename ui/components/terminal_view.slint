@@ -10,7 +10,7 @@ export component TerminalView inherits Rectangle {
     callback run_quick_cmd(string);
     callback clear_screen();
 
-    background: #090c10;
+    background: Theme.term_bg;
     border-radius: Theme.radius_md;
     border-width: 1px;
     border-color: Theme.border;
@@ -22,7 +22,7 @@ export component TerminalView inherits Rectangle {
         // Terminal Toolbar / Quick Commands
         Rectangle {
             height: 38px;
-            background: #12161f;
+            background: Theme.term_toolbar;
 
             HorizontalLayout {
                 padding-left: 12px;
@@ -35,12 +35,12 @@ export component TerminalView inherits Rectangle {
                     width: 8px;
                     height: 8px;
                     border-radius: 4px;
-                    background: #10b981;
+                    background: Theme.term_prompt;
                 }
 
                 Text {
                     text: "VT100 Console (UTF-8 / xterm-256color)";
-                    color: Theme.text_secondary;
+                    color: Theme.term_text_dim;
                     font-size: 11px;
                     font-weight: 600;
                     vertical-alignment: center;
@@ -121,7 +121,7 @@ export component TerminalView inherits Rectangle {
 
                 for line in root.lines: Text {
                     text: line;
-                    color: #d1d5db;
+                    color: Theme.term_text;
                     font-size: 12px;
                     font-family: "monospace";
                     wrap: no-wrap;
@@ -138,7 +138,7 @@ export component TerminalView inherits Rectangle {
         // Active Interactive Input Line
         Rectangle {
             height: 42px;
-            background: #10141c;
+            background: Theme.term_input_bg;
 
             HorizontalLayout {
                 padding-left: 12px;
@@ -148,7 +148,7 @@ export component TerminalView inherits Rectangle {
 
                 Text {
                     text: root.prompt_str;
-                    color: #10b981;
+                    color: Theme.term_prompt;
                     font-size: 12px;
                     font-weight: 700;
                     font-family: "monospace";
@@ -158,7 +158,7 @@ export component TerminalView inherits Rectangle {
                 input_box := TextInput {
                     horizontal-stretch: 1;
                     text <=> root.current_input;
-                    color: #ffffff;
+                    color: Theme.term_text;
                     font-size: 12px;
                     font-family: "monospace";
                     vertical-alignment: center;

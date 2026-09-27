@@ -1,0 +1,441 @@
+import { Theme } from "../theme.slint";
+import { VaultEntry } from "../models.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export component VaultDialog inherits Rectangle {
+    in property <bool> is_unlocked: false;
+    in property <[VaultEntry]> vault_entries;
+    in property <string> unlock_error_msg: "";
+    in-out property <string> master_password_input: "";
+
+    in-out property <string> new_secret_host_id: "";
+    in-out property <string> new_secret_value: "";
+
+    callback unlock_clicked(string);
+    callback lock_clicked();
+    callback close_clicked();
+    callback save_secret_clicked(string, string);
+
+    background: #000000AA;
+
+    // Click backdrop to close
+    TouchArea {
+        clicked => { root.close_clicked(); }
+    }
+
+    Rectangle {
+        width: 540px;
+        height: root.is_unlocked ? 560px : 360px;
+        background: Theme.bg_dark;
+        border-radius: Theme.radius_lg;
+        border-width: 1px;
+        border-color: Theme.border;
+
+        // Absorb clicks
+        TouchArea {}
+
+        VerticalLayout {
+            padding: 24px;
+            spacing: 16px;
+
+            // Header
+            HorizontalLayout {
+                alignment: space-between;
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    alignment: center;
+
+                    Rectangle {
+                        width: 32px;
+                        height: 32px;
+                        border-radius: Theme.radius_md;
+                        background: Theme.accent_amber.with-alpha(0.2);
+                        Text {
+                            text: "🔒";
+                            font-size: 16px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 2px;
+                        Text {
+                            text: "Zero-Knowledge Credential Vault";
+                            color: Theme.text_primary;
+                            font-size: 15px;
+                            font-weight: 700;
+                        }
+                        Text {
+                            text: "ChaCha20-Poly1305 + Argon2id Memory-Hard KDF";
+                            color: Theme.text_secondary;
+                            font-size: 10px;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 12px;
+                    background: close_touch.has_hover ? Theme.border : Colors.transparent;
+
+                    close_touch := TouchArea {
+                        clicked => { root.close_clicked(); }
+                    }
+
+                    Text {
+                        text: "✕";
+                        color: Theme.text_muted;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            // Divider
+            Rectangle {
+                height: 1px;
+                background: Theme.border;
+            }
+
+            // ==================== LOCKED STATE ====================
+            if !root.is_unlocked : VerticalLayout {
+                spacing: 14px;
+
+                Text {
+                    text: "Unlock the vault to access and manage your encrypted SSH private keys, SFTP passwords, and connection secrets.";
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                    wrap: word-wrap;
+                }
+
+                VerticalLayout {
+                    spacing: 6px;
+                    Text {
+                        text: "MASTER VAULT PASSWORD";
+                        color: Theme.text_muted;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+
+                    Rectangle {
+                        height: 38px;
+                        background: Theme.bg_input;
+                        border-radius: Theme.radius_sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            TextInput {
+                                text <=> root.master_password_input;
+                                color: Theme.text_primary;
+                                font-size: 13px;
+                                vertical-alignment: center;
+                                accepted => {
+                                    root.unlock_clicked(root.master_password_input);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if root.unlock_error_msg != "" : Text {
+                    text: root.unlock_error_msg;
+                    color: Theme.accent_red;
+                    font-size: 11px;
+                    font-weight: 600;
+                }
+
+                Rectangle { vertical-stretch: 1; }
+
+                HorizontalLayout {
+                    alignment: end;
+                    spacing: 12px;
+
+                    Rectangle {
+                        width: 90px;
+                        height: 36px;
+                        border-radius: Theme.radius_md;
+                        background: Theme.bg_card;
+                        border-width: 1px;
+                        border-color: Theme.border;
+
+                        TouchArea { clicked => { root.close_clicked(); } }
+                        Text {
+                            text: "Cancel";
+                            color: Theme.text_primary;
+                            font-size: 12px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    Rectangle {
+                        width: 130px;
+                        height: 36px;
+                        border-radius: Theme.radius_md;
+                        background: unlock_btn.has_hover ? Theme.accent_blue_hover : Theme.accent_blue;
+
+                        unlock_btn := TouchArea {
+                            clicked => { root.unlock_clicked(root.master_password_input); }
+                        }
+
+                        Text {
+                            text: "Unlock Vault 🔓";
+                            color: #ffffff;
+                            font-size: 12px;
+                            font-weight: 600;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            // ==================== UNLOCKED STATE ====================
+            if root.is_unlocked : VerticalLayout {
+                vertical-stretch: 1;
+                spacing: 12px;
+
+                // Status Banner
+                Rectangle {
+                    height: 32px;
+                    background: Theme.accent.with-alpha(0.15);
+                    border-radius: Theme.radius_sm;
+                    border-width: 1px;
+                    border-color: Theme.accent;
+
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 6px;
+                            alignment: center;
+                            Text {
+                                text: "●";
+                                color: Theme.accent;
+                                font-size: 10px;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: "Vault Unlocked & Memory Protected";
+                                color: Theme.accent;
+                                font-size: 11px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Text {
+                            text: "zeroize::ZeroizeOnDrop";
+                            color: Theme.text_secondary;
+                            font-size: 10px;
+                            font-family: "monospace";
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                // Stored Credentials Table Header
+                HorizontalLayout {
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    height: 18px;
+
+                    Text {
+                        horizontal-stretch: 2;
+                        text: "SERVER / HOST";
+                        color: Theme.text_muted;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: "USER";
+                        color: Theme.text_muted;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+                    Text {
+                        width: 140px;
+                        text: "STATUS";
+                        color: Theme.text_muted;
+                        font-size: 10px;
+                        font-weight: 700;
+                        horizontal-alignment: right;
+                    }
+                }
+
+                // Entries List
+                ScrollView {
+                    height: 170px;
+                    VerticalLayout {
+                        spacing: 4px;
+
+                        for entry in root.vault_entries: Rectangle {
+                            height: 34px;
+                            background: Theme.bg_card;
+                            border-radius: Theme.radius_sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            HorizontalLayout {
+                                padding-left: 10px;
+                                padding-right: 10px;
+                                alignment: center;
+
+                                Text {
+                                    horizontal-stretch: 2;
+                                    text: entry.host_name;
+                                    color: Theme.text_primary;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    overflow: elide;
+                                    vertical-alignment: center;
+                                }
+
+                                Text {
+                                    horizontal-stretch: 1;
+                                    text: entry.username;
+                                    color: Theme.text_secondary;
+                                    font-size: 11px;
+                                    overflow: elide;
+                                    vertical-alignment: center;
+                                }
+
+                                Rectangle {
+                                    width: 130px;
+                                    height: 22px;
+                                    border-radius: Theme.radius_full;
+                                    background: entry.has_secret ? Theme.accent.with-alpha(0.18) : Theme.bg_darkest;
+                                    border-width: 1px;
+                                    border-color: entry.has_secret ? Theme.accent : Theme.border;
+
+                                    Text {
+                                        text: entry.has_secret ? "🔒 Encrypted Key Saved" : "No Secret";
+                                        color: entry.has_secret ? Theme.accent : Theme.text_muted;
+                                        font-size: 10px;
+                                        font-weight: 600;
+                                        horizontal-alignment: center;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Add or update secret input
+                VerticalLayout {
+                    spacing: 4px;
+                    Text {
+                        text: "STORE OR UPDATE SECRET FOR ACTIVE HOST";
+                        color: Theme.text_muted;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 34px;
+                            background: Theme.bg_input;
+                            border-radius: Theme.radius_sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                TextInput {
+                                    text <=> root.new_secret_value;
+                                    color: Theme.text_primary;
+                                    font-size: 12px;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 100px;
+                            height: 34px;
+                            border-radius: Theme.radius_sm;
+                            background: save_sec_touch.has_hover ? Theme.accent_hover : Theme.accent;
+
+                            save_sec_touch := TouchArea {
+                                clicked => {
+                                    root.save_secret_clicked(root.new_secret_host_id, root.new_secret_value);
+                                }
+                            }
+
+                            Text {
+                                text: "Encrypt & Save";
+                                color: #ffffff;
+                                font-size: 11px;
+                                font-weight: 600;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { vertical-stretch: 1; }
+
+                // Bottom actions
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    Rectangle {
+                        width: 110px;
+                        height: 34px;
+                        border-radius: Theme.radius_md;
+                        background: lock_touch.has_hover ? Theme.accent_amber.with-alpha(0.3) : Theme.accent_amber.with-alpha(0.18);
+                        border-width: 1px;
+                        border-color: Theme.accent_amber;
+
+                        lock_touch := TouchArea {
+                            clicked => { root.lock_clicked(); }
+                        }
+
+                        Text {
+                            text: "🔒 Lock Vault";
+                            color: Theme.accent_amber;
+                            font-size: 12px;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    Rectangle {
+                        width: 90px;
+                        height: 34px;
+                        border-radius: Theme.radius_md;
+                        background: Theme.bg_card;
+                        border-width: 1px;
+                        border-color: Theme.border;
+
+                        TouchArea { clicked => { root.close_clicked(); } }
+                        Text {
+                            text: "Done";
+                            color: Theme.text_primary;
+                            font-size: 12px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

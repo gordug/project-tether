@@ -1,4 +1,5 @@
 use crate::models::{AuthMethod, HostRecord, ProtocolType};
+use crate::vault::{EncryptedVault, VaultEngine, VaultError, VaultStore};
 use directories::ProjectDirs;
 use std::fs;
 use std::path::PathBuf;
@@ -12,6 +13,8 @@ pub enum StorageError {
     Io(#[from] std::io::Error),
     #[error("Serialization error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("Vault error: {0}")]
+    Vault(#[from] VaultError),
 }
 
 pub struct ConfigManager {
@@ -33,6 +36,14 @@ impl ConfigManager {
         self.config_dir.join("hosts.json")
     }
 
+    pub fn vault_file_path(&self) -> PathBuf {
+        self.config_dir.join("vault.enc")
+    }
+
+    pub fn has_vault(&self) -> bool {
+        self.vault_file_path().exists()
+    }
+
     pub fn load_hosts(&self) -> Result<Vec<HostRecord>, StorageError> {
         let path = self.hosts_file_path();
         if !path.exists() {
@@ -51,6 +62,45 @@ impl ConfigManager {
         let content = serde_json::to_string_pretty(hosts)?;
         fs::write(path, content)?;
         Ok(())
+    }
+
+    pub fn load_vault(&self, master_password: &str) -> Result<VaultStore, StorageError> {
+        let path = self.vault_file_path();
+        if !path.exists() {
+            let default_store = Self::sample_vault_store();
+            self.save_vault(master_password, &default_store)?;
+            return Ok(default_store);
+        }
+
+        let content = fs::read_to_string(path)?;
+        let encrypted: EncryptedVault = serde_json::from_str(&content)?;
+        let store = VaultEngine::decrypt(master_password, &encrypted)?;
+        Ok(store)
+    }
+
+    pub fn save_vault(&self, master_password: &str, store: &VaultStore) -> Result<(), StorageError> {
+        let path = self.vault_file_path();
+        let encrypted = VaultEngine::encrypt(master_password, store)?;
+        let content = serde_json::to_string_pretty(&encrypted)?;
+        fs::write(path, content)?;
+        Ok(())
+    }
+
+    pub fn sample_vault_store() -> VaultStore {
+        let mut store = VaultStore::default();
+        store.secrets.insert(
+            "10000000-0000-0000-0000-000000000001".to_string(),
+            "ssh-ed25519-key-passphrase-stored".to_string(),
+        );
+        store.secrets.insert(
+            "10000000-0000-0000-0000-000000000002".to_string(),
+            "cisco_enable_secret_99".to_string(),
+        );
+        store.secrets.insert(
+            "10000000-0000-0000-0000-000000000003".to_string(),
+            "zfs_backup_vault_p@ss!".to_string(),
+        );
+        store
     }
 
     pub fn sample_hosts() -> Vec<HostRecord> {

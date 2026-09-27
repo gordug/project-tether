@@ -1,15 +1,26 @@
 export global Theme {
-    out property <color> bg_darkest: #0d1117;
-    out property <color> bg_dark: #161b22;
-    out property <color> bg_card: #21262d;
-    out property <color> bg_card_hover: #30363d;
-    out property <color> bg_input: #0d1117;
-    out property <color> border: #30363d;
-    out property <color> border_focus: #58a6ff;
+    in-out property <bool> dark: true;
 
-    out property <color> text_primary: #f0f6fc;
-    out property <color> text_secondary: #8b949e;
-    out property <color> text_muted: #6e7681;
+    out property <color> bg_darkest: dark ? #0d1117 : #f0f2f5;
+    out property <color> bg_dark: dark ? #161b22 : #ffffff;
+    out property <color> bg_card: dark ? #21262d : #f8fafc;
+    out property <color> bg_card_hover: dark ? #30363d : #eef2f6;
+    out property <color> bg_input: dark ? #0d1117 : #ffffff;
+    out property <color> border: dark ? #30363d : #d0d7de;
+    out property <color> border_focus: dark ? #58a6ff : #0969da;
+    out property <color> progress_track: dark ? #21262d : #e1e4e8;
+
+    out property <color> text_primary: dark ? #f0f6fc : #1f2328;
+    out property <color> text_secondary: dark ? #8b949e : #57606a;
+    out property <color> text_muted: dark ? #6e7681 : #8c959f;
+
+    // Terminal specific colors (ensures crisp VT100 readability in both app themes)
+    out property <color> term_bg: dark ? #090c10 : #141820;
+    out property <color> term_toolbar: dark ? #12161f : #1c2230;
+    out property <color> term_text: #e6edf3;
+    out property <color> term_text_dim: #9ca3af;
+    out property <color> term_prompt: #10b981;
+    out property <color> term_input_bg: dark ? #10141c : #181d28;
 
     out property <color> accent: #238636;
     out property <color> accent_hover: #2ea043;

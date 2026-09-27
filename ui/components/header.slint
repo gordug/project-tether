@@ -1,5 +1,6 @@
 import { Theme } from "../theme.slint";
 import { TabItem } from "../models.slint";
+import { Switch } from "std-widgets.slint";
 
 export component SessionTab inherits Rectangle {
     in property <TabItem> tab;
@@ -9,6 +10,8 @@ export component SessionTab inherits Rectangle {
     height: 38px;
     background: tab.is_active ? Theme.bg_darkest : (tab_touch.has_hover ? Theme.bg_card : Theme.bg_dark);
     border-radius: Theme.radius_sm;
+    border-width: 1px;
+    border-color: tab.is_active ? Theme.border : Colors.transparent;
 
     tab_touch := TouchArea {
         clicked => { root.clicked(); }
@@ -86,6 +89,7 @@ export component HeaderBar inherits Rectangle {
     callback tab_closed(int);
     callback quick_connect_submit(string);
     callback quick_connect_changed(string);
+    callback dark_mode_toggled(bool);
 
     height: 44px;
     background: Theme.bg_dark;
@@ -110,13 +114,13 @@ export component HeaderBar inherits Rectangle {
             }
         }
 
-        // Quick Connect Bar
+        // Quick Connect Bar & Dark Mode Switch
         HorizontalLayout {
             alignment: end;
-            spacing: 8px;
+            spacing: 10px;
 
             Rectangle {
-                width: 240px;
+                width: 220px;
                 height: 30px;
                 y: 7px;
                 background: Theme.bg_input;
@@ -168,6 +172,18 @@ export component HeaderBar inherits Rectangle {
                     font-weight: 600;
                     horizontal-alignment: center;
                     vertical-alignment: center;
+                }
+            }
+
+            // Dark Mode Switch: directly two-way bound to Theme.dark
+            dark_mode_switch := Switch {
+                y: 6px;
+                text: Theme.dark ? "🌙 Dark" : "☀️ Light";
+                checked <=> Theme.dark;
+                accessible-role: switch;
+                accessible-label: "Dark mode switch";
+                toggled => {
+                    root.dark_mode_toggled(Theme.dark);
                 }
             }
         }

@@ -32,3 +32,34 @@ export struct ServerMetrics {
     uptime_str: string,
     load_avg: string,
 }
+
+export struct FileItem {
+    name: string,
+    path: string,
+    is_dir: bool,
+    size_str: string,
+    modified_str: string,
+    permissions: string,
+    icon: string,
+    is_selected: bool,
+}
+
+export struct TransferItem {
+    id: string,
+    name: string,
+    source: string,
+    destination: string,
+    progress: float,
+    size_str: string,
+    speed_str: string,
+    is_upload: bool,
+    status: string,
+}
+
+export struct VaultEntry {
+    host_id: string,
+    host_name: string,
+    username: string,
+    auth_type: string,
+    has_secret: bool,
+}

@@ -1,0 +1,846 @@
+import { Theme } from "../theme.slint";
+import { FileItem, TransferItem } from "../models.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export component FileRow inherits Rectangle {
+    in property <FileItem> item;
+    in property <bool> is_selected: false;
+    callback clicked();
+    callback double_clicked();
+
+    height: 30px;
+    background: is_selected ? Theme.accent_blue.with-alpha(0.25) : (touch.has_hover ? Theme.bg_card_hover : Colors.transparent);
+    border-radius: Theme.radius_sm;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+        double-clicked => { root.double_clicked(); }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+        alignment: center;
+
+        // 1. Fixed Icon column (strictly 22px)
+        Rectangle {
+            width: 22px;
+            Text {
+                text: root.item.icon;
+                font-size: 13px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // 2. Filename column (flex stretches, left-aligned)
+        Text {
+            horizontal-stretch: 1;
+            text: root.item.name;
+            color: root.item.is_dir ? Theme.accent_blue_hover : Theme.text_primary;
+            font-size: 12px;
+            font-weight: root.item.is_dir ? 600 : 400;
+            overflow: elide;
+            horizontal-alignment: left;
+            vertical-alignment: center;
+        }
+
+        // 3. Size column (strictly 70px, right-aligned)
+        Text {
+            width: 70px;
+            text: root.item.size_str;
+            color: Theme.text_secondary;
+            font-size: 11px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+
+        // 4. Permissions column (strictly 85px, center-aligned)
+        Text {
+            width: 85px;
+            text: root.item.permissions;
+            color: Theme.text_muted;
+            font-size: 10px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        // 5. Modified column (strictly 110px, right-aligned)
+        Text {
+            width: 110px;
+            text: root.item.modified_str;
+            color: Theme.text_muted;
+            font-size: 11px;
+            horizontal-alignment: right;
+            overflow: elide;
+            vertical-alignment: center;
+        }
+
+        // 6. Action column (strictly 26px - ALWAYS present so rows NEVER shift)
+        Rectangle {
+            width: 26px;
+            height: 20px;
+
+            if root.item.is_dir : Rectangle {
+                width: 22px;
+                height: 18px;
+                border-radius: Theme.radius_sm;
+                background: enter_touch.has_hover ? Theme.accent_blue : Theme.bg_card;
+
+                enter_touch := TouchArea {
+                    clicked => { root.double_clicked(); }
+                }
+
+                Text {
+                    text: "➔";
+                    font-size: 10px;
+                    color: enter_touch.has_hover ? #ffffff : Theme.text_secondary;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
+
+export component TransferQueueRow inherits Rectangle {
+    in property <TransferItem> item;
+
+    height: 36px;
+    background: Theme.bg_card;
+    border-radius: Theme.radius_sm;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 12px;
+        alignment: center;
+
+        // Direction Indicator
+        Rectangle {
+            width: 22px;
+            height: 22px;
+            border-radius: Theme.radius_full;
+            background: root.item.is_upload ? Theme.accent_blue.with-alpha(0.2) : Theme.accent.with-alpha(0.2);
+
+            Text {
+                text: root.item.is_upload ? "▲" : "▼";
+                font-size: 10px;
+                color: root.item.is_upload ? Theme.accent_blue : Theme.accent;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // File name & destination
+        VerticalLayout {
+            horizontal-stretch: 2;
+            spacing: 2px;
+            alignment: center;
+
+            Text {
+                text: root.item.name;
+                color: Theme.text_primary;
+                font-size: 12px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            Text {
+                text: root.item.source + " ➔ " + root.item.destination;
+                color: Theme.text_muted;
+                font-size: 10px;
+                overflow: elide;
+            }
+        }
+
+        // Progress Bar & Stats
+        VerticalLayout {
+            horizontal-stretch: 2;
+            alignment: center;
+            spacing: 3px;
+
+            Rectangle {
+                height: 6px;
+                background: Theme.progress_track;
+                border-radius: 3px;
+
+                Rectangle {
+                    x: 0px;
+                    y: 0px;
+                    width: parent.width * root.item.progress;
+                    height: 100%;
+                    border-radius: 3px;
+                    background: root.item.progress >= 1.0 ? Theme.accent : Theme.accent_blue;
+                }
+            }
+
+            HorizontalLayout {
+                alignment: space-between;
+                Text {
+                    text: root.item.size_str;
+                    color: Theme.text_secondary;
+                    font-size: 10px;
+                }
+                Text {
+                    text: root.item.speed_str;
+                    color: Theme.text_muted;
+                    font-size: 10px;
+                }
+            }
+        }
+
+        // Status Badge
+        Rectangle {
+            width: 84px;
+            height: 22px;
+            border-radius: Theme.radius_full;
+            background: root.item.status == "Completed" ? Theme.accent.with-alpha(0.2) : (root.item.status == "Transferring" ? Theme.accent_blue.with-alpha(0.2) : Theme.bg_darkest);
+            border-width: 1px;
+            border-color: root.item.status == "Completed" ? Theme.accent : (root.item.status == "Transferring" ? Theme.accent_blue : Theme.border);
+
+            Text {
+                text: root.item.status;
+                color: root.item.status == "Completed" ? Theme.accent : (root.item.status == "Transferring" ? Theme.accent_blue : Theme.text_secondary);
+                font-size: 10px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+export component FileManagerView inherits Rectangle {
+    in property <string> local_path: "/";
+    in property <[FileItem]> local_files;
+    in property <int> selected_local_index: -1;
+
+    in property <string> remote_path: "/";
+    in property <[FileItem]> remote_files;
+    in property <int> selected_remote_index: -1;
+
+    in property <[TransferItem]> transfers;
+
+    callback local_folder_enter(int);
+    callback local_folder_up();
+    callback local_refresh();
+    callback local_file_clicked(int);
+
+    callback remote_folder_enter(int);
+    callback remote_folder_up();
+    callback remote_refresh();
+    callback remote_file_clicked(int);
+    callback remote_new_folder();
+
+    callback upload_selected();
+    callback download_selected();
+    callback clear_transfers();
+
+    background: Theme.bg_darkest;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        // Main Dual-Pane Filesystem Area
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 8px;
+
+            // ==================== LEFT PANE: LOCAL FILESYSTEM ====================
+            Rectangle {
+                horizontal-stretch: 1;
+                background: Theme.bg_dark;
+                border-radius: Theme.radius_md;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 8px;
+                    spacing: 6px;
+
+                    // Pane Header & Toolbar
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: center;
+
+                        Rectangle {
+                            width: 24px;
+                            height: 24px;
+                            border-radius: Theme.radius_sm;
+                            background: Theme.accent_blue.with-alpha(0.2);
+                            Text {
+                                text: "💻";
+                                font-size: 13px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Text {
+                            text: "Local Machine";
+                            color: Theme.text_primary;
+                            font-size: 12px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+
+                        // Path Bar
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            background: Theme.bg_input;
+                            border-radius: Theme.radius_sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                Text {
+                                    text: root.local_path;
+                                    color: Theme.text_secondary;
+                                    font-size: 11px;
+                                    overflow: elide;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+
+                        // Up Button
+                        Rectangle {
+                            width: 28px;
+                            height: 28px;
+                            border-radius: Theme.radius_sm;
+                            background: local_up_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            local_up_touch := TouchArea {
+                                clicked => { root.local_folder_up(); }
+                            }
+
+                            Text {
+                                text: "↑";
+                                font-size: 14px;
+                                font-weight: 700;
+                                color: Theme.text_primary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        // Refresh Button
+                        Rectangle {
+                            width: 28px;
+                            height: 28px;
+                            border-radius: Theme.radius_sm;
+                            background: local_ref_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            local_ref_touch := TouchArea {
+                                clicked => { root.local_refresh(); }
+                            }
+
+                            Text {
+                                text: "↻";
+                                font-size: 13px;
+                                color: Theme.text_primary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // Column Titles Header (100% matched to FileRow)
+                    Rectangle {
+                        height: 22px;
+                        background: Theme.bg_darkest.with-alpha(0.4);
+                        border-radius: Theme.radius_sm;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            spacing: 10px;
+                            alignment: center;
+
+                            // 1. Icon placeholder
+                            Rectangle {
+                                width: 22px;
+                            }
+
+                            // 2. Name header
+                            Text {
+                                horizontal-stretch: 1;
+                                text: "NAME";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: left;
+                                vertical-alignment: center;
+                            }
+
+                            // 3. Size header
+                            Text {
+                                width: 70px;
+                                text: "SIZE";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: right;
+                                vertical-alignment: center;
+                            }
+
+                            // 4. Permissions header
+                            Text {
+                                width: 85px;
+                                text: "PERMISSIONS";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            // 5. Modified header
+                            Text {
+                                width: 110px;
+                                text: "MODIFIED";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: right;
+                                vertical-alignment: center;
+                            }
+
+                            // 6. Action placeholder
+                            Rectangle {
+                                width: 26px;
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 1px;
+                        background: Theme.border;
+                    }
+
+                    // Local Files List
+                    ScrollView {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            spacing: 2px;
+
+                            for file[i] in root.local_files: FileRow {
+                                item: file;
+                                is_selected: i == root.selected_local_index;
+                                clicked => { root.local_file_clicked(i); }
+                                double_clicked => {
+                                    if file.is_dir {
+                                        root.local_folder_enter(i);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ==================== CENTER TRANSFER ACTIONS ====================
+            VerticalLayout {
+                width: 46px;
+                alignment: center;
+                spacing: 12px;
+
+                Rectangle {
+                    width: 44px;
+                    height: 40px;
+                    border-radius: Theme.radius_md;
+                    background: upload_touch.has_hover ? Theme.accent_blue_hover : Theme.accent_blue;
+
+                    upload_touch := TouchArea {
+                        clicked => { root.upload_selected(); }
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 2px;
+                        Text {
+                            text: "➔";
+                            font-size: 14px;
+                            font-weight: 800;
+                            color: #ffffff;
+                            horizontal-alignment: center;
+                        }
+                        Text {
+                            text: "Upload";
+                            font-size: 8px;
+                            font-weight: 700;
+                            color: #ffffff;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 44px;
+                    height: 40px;
+                    border-radius: Theme.radius_md;
+                    background: download_touch.has_hover ? Theme.accent_hover : Theme.accent;
+
+                    download_touch := TouchArea {
+                        clicked => { root.download_selected(); }
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 2px;
+                        Text {
+                            text: "⬅";
+                            font-size: 14px;
+                            font-weight: 800;
+                            color: #ffffff;
+                            horizontal-alignment: center;
+                        }
+                        Text {
+                            text: "Download";
+                            font-size: 8px;
+                            font-weight: 700;
+                            color: #ffffff;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            // ==================== RIGHT PANE: REMOTE HOST FILESYSTEM ====================
+            Rectangle {
+                horizontal-stretch: 1;
+                background: Theme.bg_dark;
+                border-radius: Theme.radius_md;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 8px;
+                    spacing: 6px;
+
+                    // Pane Header & Toolbar
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: center;
+
+                        Rectangle {
+                            width: 24px;
+                            height: 24px;
+                            border-radius: Theme.radius_sm;
+                            background: Theme.proto_sftp.with-alpha(0.2);
+                            Text {
+                                text: "🌐";
+                                font-size: 13px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Text {
+                            text: "Remote Host";
+                            color: Theme.text_primary;
+                            font-size: 12px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+
+                        // Path Bar
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            background: Theme.bg_input;
+                            border-radius: Theme.radius_sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                Text {
+                                    text: root.remote_path;
+                                    color: Theme.text_secondary;
+                                    font-size: 11px;
+                                    overflow: elide;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+
+                        // Up Button
+                        Rectangle {
+                            width: 28px;
+                            height: 28px;
+                            border-radius: Theme.radius_sm;
+                            background: remote_up_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            remote_up_touch := TouchArea {
+                                clicked => { root.remote_folder_up(); }
+                            }
+
+                            Text {
+                                text: "↑";
+                                font-size: 14px;
+                                font-weight: 700;
+                                color: Theme.text_primary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        // Refresh Button
+                        Rectangle {
+                            width: 28px;
+                            height: 28px;
+                            border-radius: Theme.radius_sm;
+                            background: remote_ref_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            remote_ref_touch := TouchArea {
+                                clicked => { root.remote_refresh(); }
+                            }
+
+                            Text {
+                                text: "↻";
+                                font-size: 13px;
+                                color: Theme.text_primary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        // New Folder Button
+                        Rectangle {
+                            width: 72px;
+                            height: 28px;
+                            border-radius: Theme.radius_sm;
+                            background: new_folder_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+                            border-width: 1px;
+                            border-color: Theme.border;
+
+                            new_folder_touch := TouchArea {
+                                clicked => { root.remote_new_folder(); }
+                            }
+
+                            HorizontalLayout {
+                                alignment: center;
+                                spacing: 4px;
+                                Text {
+                                    text: "+";
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.accent_blue;
+                                    vertical-alignment: center;
+                                }
+                                Text {
+                                    text: "Folder";
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    color: Theme.text_primary;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+
+                    // Column Titles Header (100% matched to FileRow)
+                    Rectangle {
+                        height: 22px;
+                        background: Theme.bg_darkest.with-alpha(0.4);
+                        border-radius: Theme.radius_sm;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            spacing: 10px;
+                            alignment: center;
+
+                            // 1. Icon placeholder
+                            Rectangle {
+                                width: 22px;
+                            }
+
+                            // 2. Name header
+                            Text {
+                                horizontal-stretch: 1;
+                                text: "NAME";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: left;
+                                vertical-alignment: center;
+                            }
+
+                            // 3. Size header
+                            Text {
+                                width: 70px;
+                                text: "SIZE";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: right;
+                                vertical-alignment: center;
+                            }
+
+                            // 4. Permissions header
+                            Text {
+                                width: 85px;
+                                text: "PERMISSIONS";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            // 5. Modified header
+                            Text {
+                                width: 110px;
+                                text: "MODIFIED";
+                                color: Theme.text_muted;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                                horizontal-alignment: right;
+                                vertical-alignment: center;
+                            }
+
+                            // 6. Action placeholder
+                            Rectangle {
+                                width: 26px;
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 1px;
+                        background: Theme.border;
+                    }
+
+                    // Remote Files List
+                    ScrollView {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            spacing: 2px;
+
+                            for file[i] in root.remote_files: FileRow {
+                                item: file;
+                                is_selected: i == root.selected_remote_index;
+                                clicked => { root.remote_file_clicked(i); }
+                                double_clicked => {
+                                    if file.is_dir {
+                                        root.remote_folder_enter(i);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==================== BOTTOM TRANSFER QUEUE TRAY ====================
+        Rectangle {
+            height: 115px;
+            background: Theme.bg_dark;
+            border-radius: Theme.radius_md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            VerticalLayout {
+                padding: 8px;
+                spacing: 6px;
+
+                // Tray Header
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: center;
+
+                        Text {
+                            text: "TRANSFER QUEUE";
+                            color: Theme.text_muted;
+                            font-size: 10px;
+                            font-weight: 700;
+                            letter-spacing: 0.5px;
+                            vertical-alignment: center;
+                        }
+
+                        Rectangle {
+                            height: 18px;
+                            width: 24px;
+                            border-radius: 9px;
+                            background: Theme.bg_card;
+
+                            Text {
+                                text: root.transfers.length;
+                                color: Theme.text_secondary;
+                                font-size: 10px;
+                                font-weight: 600;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // Clear Completed Button
+                    Rectangle {
+                        width: 96px;
+                        height: 24px;
+                        border-radius: Theme.radius_sm;
+                        background: clear_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+                        border-width: 1px;
+                        border-color: Theme.border;
+
+                        clear_touch := TouchArea {
+                            clicked => { root.clear_transfers(); }
+                        }
+
+                        Text {
+                            text: "Clear Finished";
+                            color: Theme.text_secondary;
+                            font-size: 10px;
+                            font-weight: 600;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                // Transfer Queue List
+                ScrollView {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        spacing: 4px;
+
+                        for transfer in root.transfers: TransferQueueRow {
+                            item: transfer;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
