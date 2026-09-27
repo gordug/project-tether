@@ -1,0 +1,7 @@
+[package]
+name = "tether-net"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tether-core = { path = "../tether-core" }

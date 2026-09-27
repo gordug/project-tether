@@ -1,12 +1,18 @@
 [package]
-name = "slint-rust-template"
+name = "tether"
 version = "0.1.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [
+    "crates/tether-core",
+    "crates/tether-net",
+]
 
 [dependencies]
+tether-core = { path = "crates/tether-core" }
 slint = "1.18.1"
+uuid = { version = "1.10", features = ["v4"] }
 
 [build-dependencies]
 slint-build = "1.18.1"

@@ -1,0 +1,317 @@
+import { Theme } from "../theme.slint";
+import { LineEdit, Button, ScrollView } from "std-widgets.slint";
+
+export component NewHostDialog inherits Rectangle {
+    in-out property <string> form_name: "";
+    in-out property <string> form_protocol: "SSH";
+    in-out property <string> form_host: "";
+    in-out property <string> form_port: "22";
+    in-out property <string> form_username: "";
+    in-out property <string> form_group: "Default";
+    in-out property <string> form_tags: "";
+
+    callback save_clicked();
+    callback cancel_clicked();
+
+    background: #000000AA;
+
+    // Click backdrop to cancel
+    TouchArea {
+        clicked => { root.cancel_clicked(); }
+    }
+
+    // Modal dialog box
+    Rectangle {
+        width: 480px;
+        height: 520px;
+        background: Theme.bg_dark;
+        border-radius: Theme.radius_lg;
+        border-width: 1px;
+        border-color: Theme.border;
+
+        // Absorb clicks inside dialog
+        TouchArea {}
+
+        VerticalLayout {
+            padding: 24px;
+            spacing: 16px;
+
+            // Modal Header
+            HorizontalLayout {
+                alignment: space-between;
+
+                Text {
+                    text: "New Connection Profile";
+                    color: Theme.text_primary;
+                    font-size: 16px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+
+                Rectangle {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 12px;
+                    background: close_touch.has_hover ? Theme.border : Colors.transparent;
+
+                    close_touch := TouchArea {
+                        clicked => { root.cancel_clicked(); }
+                    }
+
+                    Text {
+                        text: "✕";
+                        color: Theme.text_muted;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            // Protocol Selector
+            VerticalLayout {
+                spacing: 6px;
+                Text {
+                    text: "PROTOCOL";
+                    color: Theme.text_muted;
+                    font-size: 10px;
+                    font-weight: 700;
+                }
+
+                HorizontalLayout {
+                    spacing: 4px;
+                    height: 30px;
+
+                    for proto in ["SSH", "Telnet", "SFTP", "SCP", "FTP", "VNC", "RDP"] : Rectangle {
+                        horizontal-stretch: 1;
+                        border-radius: Theme.radius_sm;
+                        background: root.form_protocol == proto ? Theme.accent_blue : Theme.bg_card;
+
+                        TouchArea {
+                            clicked => {
+                                root.form_protocol = proto;
+                                if proto == "SSH" || proto == "SFTP" || proto == "SCP" {
+                                    root.form_port = "22";
+                                }
+                                if proto == "Telnet" {
+                                    root.form_port = "23";
+                                }
+                                if proto == "FTP" {
+                                    root.form_port = "21";
+                                }
+                                if proto == "VNC" {
+                                    root.form_port = "5900";
+                                }
+                                if proto == "RDP" {
+                                    root.form_port = "3389";
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: proto;
+                            color: root.form_protocol == proto ? #ffffff : Theme.text_secondary;
+                            font-size: 11px;
+                            font-weight: 600;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            // Connection Name
+            VerticalLayout {
+                spacing: 4px;
+                Text { text: "DISPLAY NAME"; color: Theme.text_muted; font-size: 10px; font-weight: 700; }
+                Rectangle {
+                    height: 34px;
+                    background: Theme.bg_input;
+                    border-radius: Theme.radius_sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    HorizontalLayout {
+                        padding-left: 8px; padding-right: 8px;
+                        TextInput {
+                            text <=> root.form_name;
+                            color: Theme.text_primary;
+                            font-size: 12px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            // Host & Port Row
+            HorizontalLayout {
+                spacing: 12px;
+
+                VerticalLayout {
+                    horizontal-stretch: 3;
+                    spacing: 4px;
+                    Text { text: "HOST / IP ADDRESS"; color: Theme.text_muted; font-size: 10px; font-weight: 700; }
+                    Rectangle {
+                        height: 34px;
+                        background: Theme.bg_input;
+                        border-radius: Theme.radius_sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+                        HorizontalLayout {
+                            padding-left: 8px; padding-right: 8px;
+                            TextInput {
+                                text <=> root.form_host;
+                                color: Theme.text_primary;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 4px;
+                    Text { text: "PORT"; color: Theme.text_muted; font-size: 10px; font-weight: 700; }
+                    Rectangle {
+                        height: 34px;
+                        background: Theme.bg_input;
+                        border-radius: Theme.radius_sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+                        HorizontalLayout {
+                            padding-left: 8px; padding-right: 8px;
+                            TextInput {
+                                text <=> root.form_port;
+                                color: Theme.text_primary;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Username & Group Row
+            HorizontalLayout {
+                spacing: 12px;
+
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 4px;
+                    Text { text: "USERNAME"; color: Theme.text_muted; font-size: 10px; font-weight: 700; }
+                    Rectangle {
+                        height: 34px;
+                        background: Theme.bg_input;
+                        border-radius: Theme.radius_sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+                        HorizontalLayout {
+                            padding-left: 8px; padding-right: 8px;
+                            TextInput {
+                                text <=> root.form_username;
+                                color: Theme.text_primary;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 4px;
+                    Text { text: "GROUP / FOLDER"; color: Theme.text_muted; font-size: 10px; font-weight: 700; }
+                    Rectangle {
+                        height: 34px;
+                        background: Theme.bg_input;
+                        border-radius: Theme.radius_sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+                        HorizontalLayout {
+                            padding-left: 8px; padding-right: 8px;
+                            TextInput {
+                                text <=> root.form_group;
+                                color: Theme.text_primary;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Tags
+            VerticalLayout {
+                spacing: 4px;
+                Text { text: "TAGS (COMMA SEPARATED)"; color: Theme.text_muted; font-size: 10px; font-weight: 700; }
+                Rectangle {
+                    height: 34px;
+                    background: Theme.bg_input;
+                    border-radius: Theme.radius_sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    HorizontalLayout {
+                        padding-left: 8px; padding-right: 8px;
+                        TextInput {
+                            text <=> root.form_tags;
+                            color: Theme.text_primary;
+                            font-size: 12px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            // Spacer
+            Rectangle { vertical-stretch: 1; }
+
+            // Action Buttons
+            HorizontalLayout {
+                spacing: 12px;
+                alignment: end;
+
+                Rectangle {
+                    width: 90px;
+                    height: 36px;
+                    border-radius: Theme.radius_md;
+                    background: cancel_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    cancel_touch := TouchArea {
+                        clicked => { root.cancel_clicked(); }
+                    }
+
+                    Text {
+                        text: "Cancel";
+                        color: Theme.text_primary;
+                        font-size: 12px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                Rectangle {
+                    width: 140px;
+                    height: 36px;
+                    border-radius: Theme.radius_md;
+                    background: save_touch.has_hover ? Theme.accent_hover : Theme.accent;
+
+                    save_touch := TouchArea {
+                        clicked => { root.save_clicked(); }
+                    }
+
+                    Text {
+                        text: "Save Connection";
+                        color: #ffffff;
+                        font-size: 12px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}

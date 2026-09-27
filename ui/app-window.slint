@@ -1,18 +1,109 @@
-import { Button, VerticalBox } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { HostItem, TabItem, ServerMetrics } from "models.slint";
+import { Sidebar } from "components/sidebar.slint";
+import { HeaderBar } from "components/header.slint";
+import { Workspace } from "components/workspace.slint";
+import { NewHostDialog } from "components/new_host_dialog.slint";
+
+export { Theme, HostItem, TabItem, ServerMetrics }
+
+export global AppState {
+    in property <[HostItem]> hosts;
+    in property <int> selected_host_index: -1;
+    in property <[TabItem]> tabs;
+    in property <int> active_tab_index: -1;
+    in property <bool> has_active_tab: false;
+    in property <TabItem> active_tab;
+    in property <ServerMetrics> metrics;
+    in-out property <bool> show_new_host_dialog: false;
+    in property <string> search_text: "";
+    in property <int> category_filter: 0;
+}
+
+export global AppLogic {
+    callback host_selected(int);
+    callback host_connect(int);
+    callback tab_selected(int);
+    callback tab_closed(int);
+    callback search_changed(string);
+    callback filter_changed(int);
+    callback quick_connect_submit(string);
+    callback quick_connect_protocol(string);
+    callback open_new_host_modal();
+    callback cancel_new_host_modal();
+    callback save_new_host(string, string, string, string, string, string, string);
+    callback refresh_session();
+    callback disconnect_session();
+    callback open_vault();
+}
 
 export component AppWindow inherits Window {
-    in-out property <int> counter: 42;
-    callback request-increase-value();
-    VerticalBox {
-        Text {
-            text: "Counter: \{root.counter}";
+    title: "Tether - Remote Management & Monitoring Workbench";
+    min-width: 1080px;
+    min-height: 700px;
+    preferred-width: 1200px;
+    preferred-height: 780px;
+    background: Theme.bg_darkest;
+
+    HorizontalLayout {
+        // Left Column: Host Navigation Sidebar
+        Rectangle {
+            width: 330px;
+            Sidebar {
+                hosts: AppState.hosts;
+                selected_host_index: AppState.selected_host_index;
+                search_text: AppState.search_text;
+                category_filter: AppState.category_filter;
+
+                host_selected(idx) => { AppLogic.host_selected(idx); }
+                host_connect(idx) => { AppLogic.host_connect(idx); }
+                search_changed(query) => { AppLogic.search_changed(query); }
+                filter_changed(cat) => { AppLogic.filter_changed(cat); }
+                new_host_clicked => { AppLogic.open_new_host_modal(); }
+                vault_clicked => { AppLogic.open_vault(); }
+            }
         }
 
-        Button {
-            text: "Increase value";
-            clicked => {
-                root.request-increase-value();
+        // Right Column: Header Tabs + Active Workspace
+        VerticalLayout {
+            horizontal-stretch: 1;
+
+            HeaderBar {
+                tabs: AppState.tabs;
+                active_tab_index: AppState.active_tab_index;
+                tab_selected(idx) => { AppLogic.tab_selected(idx); }
+                tab_closed(idx) => { AppLogic.tab_closed(idx); }
+                quick_connect_submit(query) => { AppLogic.quick_connect_submit(query); }
             }
+
+            Workspace {
+                vertical-stretch: 1;
+                has_active_tab: AppState.has_active_tab;
+                active_tab: AppState.active_tab;
+                metrics: AppState.metrics;
+
+                disconnect_session => { AppLogic.disconnect_session(); }
+                reconnect_session => { AppLogic.refresh_session(); }
+                quick_connect_protocol(proto) => { AppLogic.quick_connect_protocol(proto); }
+            }
+        }
+    }
+
+    // Modal Overlays
+    if AppState.show_new_host_dialog : NewHostDialog {
+        cancel_clicked => {
+            AppLogic.cancel_new_host_modal();
+        }
+        save_clicked => {
+            AppLogic.save_new_host(
+                self.form_name,
+                self.form_protocol,
+                self.form_host,
+                self.form_port,
+                self.form_username,
+                self.form_group,
+                self.form_tags
+            );
         }
     }
 }

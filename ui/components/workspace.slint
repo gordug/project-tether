@@ -1,0 +1,489 @@
+import { Theme } from "../theme.slint";
+import { TabItem, ServerMetrics } from "../models.slint";
+import { Button } from "std-widgets.slint";
+
+export component MetricTile inherits Rectangle {
+    in property <string> label;
+    in property <string> value_str;
+    in property <float> percent; // 0.0 to 1.0
+    in property <color> bar_color: Theme.accent_blue;
+
+    height: 52px;
+    background: Theme.bg_card;
+    border-radius: Theme.radius_md;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    VerticalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        spacing: 4px;
+
+        HorizontalLayout {
+            alignment: space-between;
+            Text {
+                text: root.label;
+                color: Theme.text_secondary;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            Text {
+                text: root.value_str;
+                color: Theme.text_primary;
+                font-size: 11px;
+                font-weight: 700;
+            }
+        }
+
+        // Progress bar track
+        Rectangle {
+            height: 6px;
+            border-radius: 3px;
+            background: Theme.bg_darkest;
+
+            // Bar fill
+            Rectangle {
+                x: 0px;
+                y: 0px;
+                width: parent.width * root.percent;
+                height: 100%;
+                border-radius: 3px;
+                background: root.bar_color;
+            }
+        }
+    }
+}
+
+export component QuickLaunchCard inherits Rectangle {
+    in property <string> title;
+    in property <string> desc;
+    in property <string> icon;
+    in property <color> accent_color;
+    callback clicked();
+
+    height: 100px;
+    background: card_touch.has_hover ? Theme.bg_card_hover : Theme.bg_card;
+    border-radius: Theme.radius_md;
+    border-width: 1px;
+    border-color: card_touch.has_hover ? root.accent_color : Theme.border;
+
+    card_touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        padding: 16px;
+        spacing: 14px;
+        alignment: center;
+
+        Rectangle {
+            width: 44px;
+            height: 44px;
+            border-radius: Theme.radius_md;
+            background: root.accent_color.with-alpha(0.18);
+            border-width: 1px;
+            border-color: root.accent_color;
+
+            Text {
+                text: root.icon;
+                font-size: 18px;
+                color: root.accent_color;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+            horizontal-stretch: 1;
+
+            Text {
+                text: root.title;
+                color: Theme.text_primary;
+                font-size: 14px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: root.desc;
+                color: Theme.text_secondary;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+export component Workspace inherits Rectangle {
+    in property <bool> has_active_tab: false;
+    in property <TabItem> active_tab;
+    in property <ServerMetrics> metrics;
+
+    callback disconnect_session();
+    callback reconnect_session();
+    callback quick_connect_protocol(string);
+
+    background: Theme.bg_darkest;
+
+    if !root.has_active_tab : VerticalLayout {
+        padding: 32px;
+        spacing: 24px;
+        alignment: center;
+
+        // Hero Welcome Banner
+        Rectangle {
+            height: 140px;
+            border-radius: Theme.radius_lg;
+            background: @linear-gradient(135deg, #161b22 0%, #1f293d 100%);
+            border-width: 1px;
+            border-color: Theme.border;
+
+            HorizontalLayout {
+                padding: 24px;
+                spacing: 20px;
+                alignment: center;
+
+                Rectangle {
+                    width: 68px;
+                    height: 68px;
+                    border-radius: Theme.radius_md;
+                    background: Theme.accent_blue.with-alpha(0.2);
+                    border-width: 2px;
+                    border-color: Theme.accent_blue;
+
+                    Text {
+                        text: "⚡";
+                        font-size: 32px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 6px;
+                    horizontal-stretch: 1;
+
+                    Text {
+                        text: "Welcome to Tether Workbench";
+                        color: Theme.text_primary;
+                        font-size: 22px;
+                        font-weight: 800;
+                    }
+
+                    Text {
+                        text: "Consolidated, memory-safe remote management for SSH, Telnet, SFTP, SCP, FTP, VNC & RDP with live host telemetry.";
+                        color: Theme.text_secondary;
+                        font-size: 13px;
+                    }
+                }
+            }
+        }
+
+        // Quick Launch Protocol Grid Header
+        Text {
+            text: "QUICK START A PROTOCOL SESSION";
+            color: Theme.text_muted;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        // 3x2 Quick Launch Cards
+        VerticalLayout {
+            spacing: 12px;
+
+            HorizontalLayout {
+                spacing: 12px;
+                QuickLaunchCard {
+                    horizontal-stretch: 1;
+                    title: "SSH Terminal";
+                    desc: "Secure encrypted remote shell with PTY & agent forwarding";
+                    icon: ">_";
+                    accent_color: Theme.proto_ssh;
+                    clicked => { root.quick_connect_protocol("SSH"); }
+                }
+                QuickLaunchCard {
+                    horizontal-stretch: 1;
+                    title: "Telnet Client";
+                    desc: "Direct NVT terminal for switches, routers and legacy devices";
+                    icon: "⌨";
+                    accent_color: Theme.proto_telnet;
+                    clicked => { root.quick_connect_protocol("Telnet"); }
+                }
+                QuickLaunchCard {
+                    horizontal-stretch: 1;
+                    title: "SFTP & SCP Manager";
+                    desc: "High-speed encrypted dual-pane remote file management";
+                    icon: "📁";
+                    accent_color: Theme.proto_sftp;
+                    clicked => { root.quick_connect_protocol("SFTP"); }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+                QuickLaunchCard {
+                    horizontal-stretch: 1;
+                    title: "FTP / FTPS Suite";
+                    desc: "Standard & Explicit TLS file transfer queue";
+                    icon: "⇄";
+                    accent_color: Theme.proto_ftp;
+                    clicked => { root.quick_connect_protocol("FTP"); }
+                }
+                QuickLaunchCard {
+                    horizontal-stretch: 1;
+                    title: "VNC Remote Display";
+                    desc: "RFB 3.8 graphical desktop session with mouse & clipboard sync";
+                    icon: "🖥";
+                    accent_color: Theme.proto_vnc;
+                    clicked => { root.quick_connect_protocol("VNC"); }
+                }
+                QuickLaunchCard {
+                    horizontal-stretch: 1;
+                    title: "RDP Workstation";
+                    desc: "Pure Rust Remote Desktop Protocol client for Windows/Linux";
+                    icon: "🪟";
+                    accent_color: Theme.proto_rdp;
+                    clicked => { root.quick_connect_protocol("RDP"); }
+                }
+            }
+        }
+    }
+
+    if root.has_active_tab : VerticalLayout {
+        // Active Session Top Toolbar
+        Rectangle {
+            height: 48px;
+            background: Theme.bg_dark;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                spacing: 16px;
+                alignment: center;
+
+                // Protocol Chip
+                Rectangle {
+                    width: 50px;
+                    height: 24px;
+                    border-radius: Theme.radius_sm;
+                    background: root.active_tab.badge_color.with-alpha(0.25);
+                    border-width: 1px;
+                    border-color: root.active_tab.badge_color;
+
+                    Text {
+                        text: root.active_tab.protocol;
+                        color: root.active_tab.badge_color;
+                        font-size: 11px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                // Active Host Title
+                Text {
+                    text: root.active_tab.title;
+                    color: Theme.text_primary;
+                    font-size: 14px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+
+                // Status chip
+                Rectangle {
+                    width: 76px;
+                    height: 22px;
+                    border-radius: Theme.radius_full;
+                    background: #10b98122;
+                    border-width: 1px;
+                    border-color: #10b981;
+
+                    Text {
+                        text: "● Online";
+                        color: #10b981;
+                        font-size: 11px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                // Ping latency
+                Text {
+                    text: "Ping: \{root.metrics.ping_ms} ms";
+                    color: Theme.text_secondary;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                }
+
+                // Spacer
+                Rectangle { horizontal-stretch: 1; }
+
+                // Actions: Reconnect / Disconnect
+                Rectangle {
+                    width: 80px;
+                    height: 28px;
+                    border-radius: Theme.radius_sm;
+                    background: Theme.bg_card;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    reconnect_touch := TouchArea {
+                        clicked => { root.reconnect_session(); }
+                    }
+
+                    Text {
+                        text: "↻ Refresh";
+                        color: Theme.text_primary;
+                        font-size: 11px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                Rectangle {
+                    width: 84px;
+                    height: 28px;
+                    border-radius: Theme.radius_sm;
+                    background: discon_touch.has_hover ? Theme.accent_red_hover : Theme.accent_red;
+
+                    discon_touch := TouchArea {
+                        clicked => { root.disconnect_session(); }
+                    }
+
+                    Text {
+                        text: "Disconnect";
+                        color: #ffffff;
+                        font-size: 11px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
+        // Live Telemetry Bar (Server Monitoring Strip!)
+        Rectangle {
+            height: 68px;
+            background: #141820;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 8px;
+                padding-bottom: 8px;
+                spacing: 12px;
+
+                MetricTile {
+                    horizontal-stretch: 1;
+                    label: "CPU LOAD";
+                    value_str: "\{Math.round(root.metrics.cpu_usage * 100)}%";
+                    percent: root.metrics.cpu_usage;
+                    bar_color: root.metrics.cpu_usage > 0.8 ? Theme.accent_red : Theme.accent_blue;
+                }
+
+                MetricTile {
+                    horizontal-stretch: 1;
+                    label: "MEMORY";
+                    value_str: "\{Math.round(root.metrics.mem_usage * 100)}%";
+                    percent: root.metrics.mem_usage;
+                    bar_color: root.metrics.mem_usage > 0.85 ? Theme.accent_amber : Theme.accent_teal;
+                }
+
+                MetricTile {
+                    horizontal-stretch: 1;
+                    label: "STORAGE";
+                    value_str: "\{Math.round(root.metrics.disk_usage * 100)}%";
+                    percent: root.metrics.disk_usage;
+                    bar_color: Theme.accent_purple;
+                }
+
+                MetricTile {
+                    horizontal-stretch: 1;
+                    label: "UPTIME";
+                    value_str: root.metrics.uptime_str;
+                    percent: 1.0;
+                    bar_color: Theme.accent;
+                }
+            }
+        }
+
+        // Main Session Viewport (Terminal Shell / Viewer)
+        Rectangle {
+            vertical-stretch: 1;
+            background: #090c10;
+
+            VerticalLayout {
+                padding: 16px;
+                spacing: 8px;
+
+                Text {
+                    text: "[Connected to \{root.active_tab.title} via \{root.active_tab.protocol}]";
+                    color: Theme.accent_blue;
+                    font-size: 12px;
+                    font-family: "monospace";
+                }
+
+                Text {
+                    text: "Linux tether-core-01 6.6.0-x86_64 #1 SMP PREEMPT_DYNAMIC GNU/Linux";
+                    color: Theme.text_muted;
+                    font-size: 12px;
+                    font-family: "monospace";
+                }
+
+                Text {
+                    text: "Last login: Sat Sep 27 15:42:01 2026 from 192.168.1.45";
+                    color: Theme.text_muted;
+                    font-size: 12px;
+                    font-family: "monospace";
+                }
+
+                Text {
+                    text: "tether-session:~$ uptime";
+                    color: Theme.text_primary;
+                    font-size: 12px;
+                    font-family: "monospace";
+                }
+
+                Text {
+                    text: " 16:30:12 up 42 days,  3:14,  1 user,  load average: 0.12, 0.08, 0.05";
+                    color: Theme.accent_teal;
+                    font-size: 12px;
+                    font-family: "monospace";
+                }
+
+                HorizontalLayout {
+                    spacing: 0px;
+                    Text {
+                        text: "admin@tether-host:~$ ";
+                        color: #10b981;
+                        font-size: 12px;
+                        font-weight: 700;
+                        font-family: "monospace";
+                    }
+
+                    // Blinking terminal cursor
+                    Rectangle {
+                        width: 8px;
+                        height: 14px;
+                        background: #ffffff;
+                        y: 1px;
+                    }
+                }
+
+                // Spacer
+                Rectangle { vertical-stretch: 1; }
+            }
+        }
+    }
+}

@@ -1,0 +1,347 @@
+import { Theme } from "../theme.slint";
+import { HostItem } from "../models.slint";
+import { ScrollView, Button, LineEdit } from "std-widgets.slint";
+
+export component HostCard inherits Rectangle {
+    in property <HostItem> item;
+    in property <bool> is_selected: false;
+    callback clicked();
+    callback connect_clicked();
+
+    height: 72px;
+    background: is_selected ? Theme.bg_card_hover : (touch.has_hover ? Theme.bg_card : #161b22);
+    border-radius: Theme.radius_md;
+    border-width: 1px;
+    border-color: is_selected ? Theme.accent_blue : Theme.border;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        spacing: 12px;
+
+        // Protocol Icon Badge
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 44px;
+                height: 32px;
+                border-radius: Theme.radius_sm;
+                background: root.item.badge_color.with-alpha(0.2);
+                border-width: 1px;
+                border-color: root.item.badge_color;
+
+                Text {
+                    text: root.item.protocol;
+                    color: root.item.badge_color;
+                    font-size: 11px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        // Host details
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: root.item.name;
+                    color: Theme.text_primary;
+                    font-size: 13px;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+
+                // Status indicator dot
+                Rectangle {
+                    width: 7px;
+                    height: 7px;
+                    y: 4px;
+                    border-radius: Theme.radius_full;
+                    background: root.item.status_color;
+                }
+            }
+
+            Text {
+                text: root.item.username != "" ? "\{root.item.username}@\{root.item.host}:\{root.item.port}" : "\{root.item.host}:\{root.item.port}";
+                color: Theme.text_secondary;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+
+        // Connect button
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 60px;
+                height: 28px;
+                border-radius: Theme.radius_sm;
+                background: btn_touch.has_hover ? Theme.accent_blue_hover : Theme.accent_blue;
+
+                btn_touch := TouchArea {
+                    clicked => { root.connect_clicked(); }
+                }
+
+                Text {
+                    text: "Connect";
+                    color: #ffffff;
+                    font-size: 11px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
+
+export component Sidebar inherits Rectangle {
+    in property <[HostItem]> hosts;
+    in property <int> selected_host_index: -1;
+    in property <string> search_text: "";
+    in property <int> category_filter: 0; // 0: All, 1: Terminal, 2: Files, 3: Desktop
+
+    callback host_selected(int);
+    callback host_connect(int);
+    callback search_changed(string);
+    callback filter_changed(int);
+    callback new_host_clicked();
+    callback vault_clicked();
+
+    background: Theme.bg_dark;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 12px;
+
+        // Branding
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: space-between;
+
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: center;
+
+                Rectangle {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: Theme.radius_sm;
+                    background: Theme.accent_blue;
+                    Text {
+                        text: "⚡";
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                Text {
+                    text: "TETHER";
+                    color: Theme.text_primary;
+                    font-size: 15px;
+                    font-weight: 800;
+                    vertical-alignment: center;
+                }
+            }
+
+            // Vault Status Chip
+            Rectangle {
+                height: 22px;
+                width: 78px;
+                border-radius: Theme.radius_full;
+                background: Theme.bg_card;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                vault_touch := TouchArea {
+                    clicked => { root.vault_clicked(); }
+                }
+
+                Text {
+                    text: "🔓 Vault";
+                    color: Theme.accent_teal;
+                    font-size: 10px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        // Search Bar
+        Rectangle {
+            height: 34px;
+            background: Theme.bg_input;
+            border-radius: Theme.radius_md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 10px;
+                spacing: 6px;
+
+                Text {
+                    text: "🔍";
+                    color: Theme.text_muted;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+
+                search_input := TextInput {
+                    text: root.search_text;
+                    color: Theme.text_primary;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    edited => {
+                        root.search_changed(self.text);
+                    }
+                }
+            }
+        }
+
+        // Category Filter Pills
+        HorizontalLayout {
+            spacing: 4px;
+            height: 26px;
+
+            Rectangle {
+                horizontal-stretch: 1;
+                border-radius: Theme.radius_sm;
+                background: root.category_filter == 0 ? Theme.accent_blue : Theme.bg_card;
+                TouchArea { clicked => { root.filter_changed(0); } }
+                Text {
+                    text: "All";
+                    color: root.category_filter == 0 ? #ffffff : Theme.text_secondary;
+                    font-size: 11px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+                border-radius: Theme.radius_sm;
+                background: root.category_filter == 1 ? Theme.accent_blue : Theme.bg_card;
+                TouchArea { clicked => { root.filter_changed(1); } }
+                Text {
+                    text: "Term";
+                    color: root.category_filter == 1 ? #ffffff : Theme.text_secondary;
+                    font-size: 11px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+                border-radius: Theme.radius_sm;
+                background: root.category_filter == 2 ? Theme.accent_blue : Theme.bg_card;
+                TouchArea { clicked => { root.filter_changed(2); } }
+                Text {
+                    text: "Files";
+                    color: root.category_filter == 2 ? #ffffff : Theme.text_secondary;
+                    font-size: 11px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+                border-radius: Theme.radius_sm;
+                background: root.category_filter == 3 ? Theme.accent_blue : Theme.bg_card;
+                TouchArea { clicked => { root.filter_changed(3); } }
+                Text {
+                    text: "Remote";
+                    color: root.category_filter == 3 ? #ffffff : Theme.text_secondary;
+                    font-size: 11px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        // Host list header
+        HorizontalLayout {
+            alignment: space-between;
+            Text {
+                text: "SERVERS & HOSTS";
+                color: Theme.text_muted;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+            }
+            Text {
+                text: "\{root.hosts.length} items";
+                color: Theme.text_muted;
+                font-size: 10px;
+            }
+        }
+
+        // Scrollable Host Cards
+        ScrollView {
+            vertical-stretch: 1;
+            VerticalLayout {
+                spacing: 8px;
+                padding-right: 4px;
+
+                for host[i] in root.hosts: HostCard {
+                    item: host;
+                    is_selected: i == root.selected_host_index;
+                    clicked => { root.host_selected(i); }
+                    connect_clicked => { root.host_connect(i); }
+                }
+            }
+        }
+
+        // Bottom Action Button: + Add New Host
+        Rectangle {
+            height: 38px;
+            border-radius: Theme.radius_md;
+            background: add_touch.has_hover ? Theme.accent_hover : Theme.accent;
+
+            add_touch := TouchArea {
+                clicked => { root.new_host_clicked(); }
+            }
+
+            HorizontalLayout {
+                alignment: center;
+                spacing: 6px;
+                Text {
+                    text: "＋";
+                    color: #ffffff;
+                    font-size: 14px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+                Text {
+                    text: "New Connection";
+                    color: #ffffff;
+                    font-size: 13px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}

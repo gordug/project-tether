@@ -1,0 +1,34 @@
+export struct HostItem {
+    id: string,
+    name: string,
+    group_name: string,
+    protocol: string,
+    host: string,
+    port: int,
+    username: string,
+    tags: string,
+    notes: string,
+    last_connected: string,
+    is_favorite: bool,
+    badge_color: color,
+    status_text: string,
+    status_color: color,
+}
+
+export struct TabItem {
+    id: string,
+    host_id: string,
+    title: string,
+    protocol: string,
+    badge_color: color,
+    is_active: bool,
+}
+
+export struct ServerMetrics {
+    cpu_usage: float,
+    mem_usage: float,
+    disk_usage: float,
+    ping_ms: int,
+    uptime_str: string,
+    load_avg: string,
+}
