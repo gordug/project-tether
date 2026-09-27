@@ -1,5 +1,6 @@
 import { Theme } from "../theme.slint";
 import { TabItem, ServerMetrics } from "../models.slint";
+import { TerminalView } from "terminal_view.slint";
 import { Button } from "std-widgets.slint";
 
 export component MetricTile inherits Rectangle {
@@ -121,10 +122,15 @@ export component Workspace inherits Rectangle {
     in property <bool> has_active_tab: false;
     in property <TabItem> active_tab;
     in property <ServerMetrics> metrics;
+    in property <[string]> terminal_lines;
+    in property <string> terminal_prompt: "admin@tether:~$ ";
 
     callback disconnect_session();
     callback reconnect_session();
     callback quick_connect_protocol(string);
+    callback terminal_input_submitted(string);
+    callback terminal_quick_cmd(string);
+    callback terminal_clear_requested();
 
     background: Theme.bg_darkest;
 
@@ -201,7 +207,7 @@ export component Workspace inherits Rectangle {
                 QuickLaunchCard {
                     horizontal-stretch: 1;
                     title: "SSH Terminal";
-                    desc: "Secure encrypted remote shell with PTY & agent forwarding";
+                    desc: "Secure encrypted remote shell with VT100 PTY & agent forwarding";
                     icon: ">_";
                     accent_color: Theme.proto_ssh;
                     clicked => { root.quick_connect_protocol("SSH"); }
@@ -418,71 +424,24 @@ export component Workspace inherits Rectangle {
             }
         }
 
-        // Main Session Viewport (Terminal Shell / Viewer)
-        Rectangle {
+        // Main Session Viewport: Interactive TerminalView
+        VerticalLayout {
             vertical-stretch: 1;
-            background: #090c10;
+            padding: 8px;
 
-            VerticalLayout {
-                padding: 16px;
-                spacing: 8px;
+            TerminalView {
+                lines: root.terminal_lines;
+                prompt_str: root.terminal_prompt;
 
-                Text {
-                    text: "[Connected to \{root.active_tab.title} via \{root.active_tab.protocol}]";
-                    color: Theme.accent_blue;
-                    font-size: 12px;
-                    font-family: "monospace";
+                submit_input(cmd) => {
+                    root.terminal_input_submitted(cmd);
                 }
-
-                Text {
-                    text: "Linux tether-core-01 6.6.0-x86_64 #1 SMP PREEMPT_DYNAMIC GNU/Linux";
-                    color: Theme.text_muted;
-                    font-size: 12px;
-                    font-family: "monospace";
+                run_quick_cmd(cmd) => {
+                    root.terminal_quick_cmd(cmd);
                 }
-
-                Text {
-                    text: "Last login: Sat Sep 27 15:42:01 2026 from 192.168.1.45";
-                    color: Theme.text_muted;
-                    font-size: 12px;
-                    font-family: "monospace";
+                clear_screen => {
+                    root.terminal_clear_requested();
                 }
-
-                Text {
-                    text: "tether-session:~$ uptime";
-                    color: Theme.text_primary;
-                    font-size: 12px;
-                    font-family: "monospace";
-                }
-
-                Text {
-                    text: " 16:30:12 up 42 days,  3:14,  1 user,  load average: 0.12, 0.08, 0.05";
-                    color: Theme.accent_teal;
-                    font-size: 12px;
-                    font-family: "monospace";
-                }
-
-                HorizontalLayout {
-                    spacing: 0px;
-                    Text {
-                        text: "admin@tether-host:~$ ";
-                        color: #10b981;
-                        font-size: 12px;
-                        font-weight: 700;
-                        font-family: "monospace";
-                    }
-
-                    // Blinking terminal cursor
-                    Rectangle {
-                        width: 8px;
-                        height: 14px;
-                        background: #ffffff;
-                        y: 1px;
-                    }
-                }
-
-                // Spacer
-                Rectangle { vertical-stretch: 1; }
             }
         }
     }

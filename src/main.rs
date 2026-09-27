@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex};
 use slint::{Color, ComponentHandle, ModelRc, SharedString, VecModel};
 use tether_core::models::{AuthMethod, HostRecord, ProtocolType};
 use tether_core::storage::ConfigManager;
+use tether_net::session::{MockInteractiveShell, TerminalSession};
+use tether_net::terminal::TerminalScreen;
 
 slint::include_modules!();
 
@@ -78,7 +80,8 @@ fn filter_records(
         .collect()
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     let ui = AppWindow::new()?;
     let config_mgr = Arc::new(ConfigManager::new()?);
     let all_hosts = Arc::new(Mutex::new(config_mgr.load_hosts()?));
@@ -86,6 +89,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let current_query = Arc::new(Mutex::new(String::new()));
     let current_filter = Arc::new(Mutex::new(0i32));
+
+    // Terminal session & VT100 screen buffer
+    let terminal_screen = Arc::new(Mutex::new(TerminalScreen::new(24, 90)));
+    let active_terminal_session: Arc<Mutex<Option<Arc<dyn TerminalSession>>>> = Arc::new(Mutex::new(None));
 
     // Populate initial hosts in sidebar
     {
@@ -123,10 +130,54 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     };
 
+    // Helper to start an interactive terminal session for a tab
+    let start_terminal_for_tab = {
+        let ui_handle = ui.as_weak();
+        let terminal_screen = Arc::clone(&terminal_screen);
+        let active_terminal_session = Arc::clone(&active_terminal_session);
+
+        move |host_name: String, user_name: String| {
+            // Reset screen
+            {
+                let mut screen = terminal_screen.lock().unwrap();
+                *screen = TerminalScreen::new(24, 90);
+            }
+
+            let ui_for_output = ui_handle.clone();
+            let screen_for_output = Arc::clone(&terminal_screen);
+
+            let session = MockInteractiveShell::spawn(
+                host_name.clone(),
+                user_name.clone(),
+                move |bytes: Vec<u8>| {
+                    let mut screen = screen_for_output.lock().unwrap();
+                    screen.process(&bytes);
+                    let rendered = screen.render_rows();
+
+                    let ui_weak = ui_for_output.clone();
+                    let _ = slint::invoke_from_event_loop(move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            let slint_lines: Vec<SharedString> =
+                                rendered.into_iter().map(SharedString::from).collect();
+                            ui.global::<AppState>().set_terminal_lines(ModelRc::new(VecModel::from(slint_lines)));
+                        }
+                    });
+                },
+            );
+
+            *active_terminal_session.lock().unwrap() = Some(Arc::new(session));
+
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.global::<AppState>().set_terminal_prompt(SharedString::from(format!("{}@{}:~$ ", user_name, host_name)));
+            }
+        }
+    };
+
     // Helper to refresh tabs UI
     let refresh_tabs_ui = {
         let ui_handle = ui.as_weak();
         let open_tabs = Arc::clone(&open_tabs);
+        let start_term = start_terminal_for_tab.clone();
 
         move |active_idx: i32| {
             if let Some(ui) = ui_handle.upgrade() {
@@ -138,7 +189,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let has_active = !tabs_guard.is_empty() && active_idx >= 0 && (active_idx as usize) < tabs_guard.len();
                 if has_active {
                     let active_item = tabs_guard[active_idx as usize].clone();
-                    ui.global::<AppState>().set_active_tab(active_item);
+                    ui.global::<AppState>().set_active_tab(active_item.clone());
+                    start_term(active_item.title.to_string(), "admin".to_string());
                 }
 
                 ui.global::<AppState>().set_has_active_tab(has_active);
@@ -422,6 +474,58 @@ fn main() -> Result<(), Box<dyn Error>> {
                     uptime_str: SharedString::from("42d 03h 15m"),
                     load_avg: SharedString::from("0.31, 0.22, 0.15"),
                 });
+            }
+        });
+    }
+
+    // Terminal Callbacks
+    {
+        let active_session = Arc::clone(&active_terminal_session);
+        ui.global::<AppLogic>().on_terminal_input_submitted(move |cmd| {
+            let session_guard = active_session.lock().unwrap();
+            if let Some(ref session) = *session_guard {
+                let session = Arc::clone(session);
+                let payload = format!("{}\r\n", cmd).into_bytes();
+                tokio::spawn(async move {
+                    let _ = session.send_input(&payload).await;
+                });
+            }
+        });
+    }
+
+    {
+        let active_session = Arc::clone(&active_terminal_session);
+        ui.global::<AppLogic>().on_terminal_quick_cmd(move |cmd| {
+            let session_guard = active_session.lock().unwrap();
+            if let Some(ref session) = *session_guard {
+                let session = Arc::clone(session);
+                let payload = format!("{}\r\n", cmd).into_bytes();
+                tokio::spawn(async move {
+                    let _ = session.send_input(&payload).await;
+                });
+            }
+        });
+    }
+
+    {
+        let active_session = Arc::clone(&active_terminal_session);
+        let terminal_screen = Arc::clone(&terminal_screen);
+        let ui_handle = ui.as_weak();
+
+        ui.global::<AppLogic>().on_terminal_clear_requested(move || {
+            {
+                let mut screen = terminal_screen.lock().unwrap();
+                screen.process(b"\x1b[2J\x1b[H");
+            }
+            let session_guard = active_session.lock().unwrap();
+            if let Some(ref session) = *session_guard {
+                let session = Arc::clone(session);
+                tokio::spawn(async move {
+                    let _ = session.send_input(b"clear\r\n").await;
+                });
+            }
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.global::<AppState>().set_terminal_lines(ModelRc::new(VecModel::from(Vec::new())));
             }
         });
     }

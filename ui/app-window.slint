@@ -18,6 +18,10 @@ export global AppState {
     in-out property <bool> show_new_host_dialog: false;
     in property <string> search_text: "";
     in property <int> category_filter: 0;
+
+    // Terminal State
+    in property <[string]> terminal_lines;
+    in property <string> terminal_prompt: "admin@tether:~$ ";
 }
 
 export global AppLogic {
@@ -35,6 +39,11 @@ export global AppLogic {
     callback refresh_session();
     callback disconnect_session();
     callback open_vault();
+
+    // Terminal callbacks
+    callback terminal_input_submitted(string);
+    callback terminal_quick_cmd(string);
+    callback terminal_clear_requested();
 }
 
 export component AppWindow inherits Window {
@@ -81,10 +90,15 @@ export component AppWindow inherits Window {
                 has_active_tab: AppState.has_active_tab;
                 active_tab: AppState.active_tab;
                 metrics: AppState.metrics;
+                terminal_lines: AppState.terminal_lines;
+                terminal_prompt: AppState.terminal_prompt;
 
                 disconnect_session => { AppLogic.disconnect_session(); }
                 reconnect_session => { AppLogic.refresh_session(); }
                 quick_connect_protocol(proto) => { AppLogic.quick_connect_protocol(proto); }
+                terminal_input_submitted(cmd) => { AppLogic.terminal_input_submitted(cmd); }
+                terminal_quick_cmd(cmd) => { AppLogic.terminal_quick_cmd(cmd); }
+                terminal_clear_requested => { AppLogic.terminal_clear_requested(); }
             }
         }
     }

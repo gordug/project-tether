@@ -5,3 +5,8 @@ edition = "2024"
 
 [dependencies]
 tether-core = { path = "../tether-core" }
+thiserror = "2.0.21"
+tokio = { version = "1.40", features = ["full"] }
+vt100 = "0.16.2"
+async-trait = "0.1"
+russh = { version = "0.63", default-features = false, features = ["flate2", "ring"] }

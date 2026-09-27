@@ -11,7 +11,9 @@ members = [
 
 [dependencies]
 tether-core = { path = "crates/tether-core" }
+tether-net = { path = "crates/tether-net" }
 slint = "1.18.1"
+tokio = { version = "1.40", features = ["full"] }
 uuid = { version = "1.10", features = ["v4"] }
 
 [build-dependencies]
